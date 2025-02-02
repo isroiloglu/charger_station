@@ -1,13 +1,14 @@
 import 'dart:developer';
 
 import 'package:charge_me/core/const/colors.dart';
+import 'package:charge_me/core/extensions.dart';
 import 'package:charge_me/ui/widgets/station_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:yandex_maps_mapkit_lite/mapkit.dart' as mapkt;
-import 'package:yandex_maps_mapkit_lite/mapkit_factory.dart';
-import 'package:yandex_maps_mapkit_lite/yandex_map.dart' as map;
-import 'package:yandex_maps_mapkit_lite/src/bindings/image/image_provider.dart'
+import 'package:yandex_maps_mapkit/mapkit.dart' as mapkt;
+import 'package:yandex_maps_mapkit/mapkit_factory.dart';
+import 'package:yandex_maps_mapkit/yandex_map.dart' as map;
+import 'package:yandex_maps_mapkit/src/bindings/image/image_provider.dart'
     as image_provider;
 
 import '../../core/listeners/map_tap_listener.dart';
@@ -24,6 +25,7 @@ class _MapPageState extends State<MapPage> {
   mapkt.MapWindow? _mapWindow;
   PersistentBottomSheetController? controller;
   static final _scaffoldKey = GlobalKey<ScaffoldState>();
+  final _indexToPlacemarkType = <int, dynamic>{};
 
   mapkt.Point? _userLocation;
   final List<mapkt.Point> locations = [
@@ -52,6 +54,11 @@ class _MapPageState extends State<MapPage> {
   List<mapkt.MapObject> objects = [];
   bool _isMapkitActive = false;
   late final AppLifecycleListener _lifecycleListener;
+
+  final imageProvider = image_provider.ImageProvider.fromImageProvider(
+      const AssetImage('assets/images/marker.png'));
+  final userImageProvider = image_provider.ImageProvider.fromImageProvider(
+      const AssetImage('assets/images/user_marker.png'));
 
   @override
   void initState() {
@@ -88,6 +95,15 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
+  late final _placemarkTapListener = MapObjectTapListenerImpl(
+    onMapObjectTapped: (mapObject, _) {
+      final placemarkPoint =
+          mapObject.castOrNull<mapkt.PlacemarkMapObject>()?.geometry;
+      showBottomSheetDialog(context, StationDialog(index: 1));
+      return true;
+    },
+  );
+
   @override
   Widget build(BuildContext context) {
     log('OBJECTS: $objects');
@@ -96,10 +112,11 @@ class _MapPageState extends State<MapPage> {
         map.YandexMap(
           // mapObjects: objects,
 
-          onMapCreated: (controller) {
+          onMapCreated: (controller) async {
             log('MAP CREATED');
             _mapWindow = controller;
-            _determinePosition();
+
+            addUserLocation();
           },
         ),
         Positioned(
@@ -113,71 +130,7 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Future<void> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return;
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.deniedForever) {
-        return;
-      }
-    }
-
-    Position position = await Geolocator.getCurrentPosition();
-    setState(() {
-      _userLocation = mapkt.Point(
-          latitude: position.latitude, longitude: position.longitude);
-    });
-    final _singlePlacemarkTapListener = StationTapListenerImpl(
-      onMapObjectTapped: (_, __) {
-        log("Clicked the placemark with composite icon");
-        return true;
-      },
-    );
-
-    final imageProvider = image_provider.ImageProvider.fromImageProvider(
-        const AssetImage('assets/images/marker.png'));
-    final userImageProvider = image_provider.ImageProvider.fromImageProvider(
-        const AssetImage('assets/images/user_marker.png'));
-    for (var p in locations) {
-      _mapWindow?.map.mapObjects.addPlacemark()
-        ?..geometry = mapkt.Point(latitude: p.latitude, longitude: p.longitude)
-        ..setIcon(
-          imageProvider,
-        )
-        ..setIconStyle(const mapkt.IconStyle(scale: 0.5))
-        ..addTapListener(StationTapListenerImpl(
-          onMapObjectTapped: (mapObject, _) {
-            log('WORKED HERE');
-            showBottomSheetDialog(
-                context, StationDialog(index: locations.indexOf(p)));
-            return true;
-          },
-        ));
-    }
-
-    if (_userLocation != null) {
-      _mapWindow?.map.mapObjects.addPlacemark()
-        ?..geometry = mapkt.Point(
-            latitude: _userLocation!.latitude,
-            longitude: _userLocation!.longitude)
-        ..setIcon(
-          userImageProvider,
-        )
-        ..setIconStyle(const mapkt.IconStyle(scale: 1))
-        ..addTapListener(_singlePlacemarkTapListener);
-
-      _mapWindow?.map.move(mapkt.CameraPosition(_userLocation!,
-          zoom: 15.0, azimuth: 150.0, tilt: 30.0));
-    }
-  }
+  Future<void> _determinePosition() async {}
 
   Widget button(VoidCallback onTap) {
     return GestureDetector(
@@ -205,6 +158,54 @@ class _MapPageState extends State<MapPage> {
         ),
       ),
     );
+  }
+
+  void addUserLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.deniedForever) {
+        return;
+      }
+    }
+
+    Position position = await Geolocator.getCurrentPosition();
+    setState(() {
+      _userLocation = mapkt.Point(
+          latitude: position.latitude, longitude: position.longitude);
+    });
+
+    for (var p in locations) {
+      _mapWindow?.map.mapObjects.addPlacemark()
+        ?..geometry = mapkt.Point(latitude: p.latitude, longitude: p.longitude)
+        ..setIcon(
+          imageProvider,
+        )
+        ..setIconStyle(const mapkt.IconStyle(scale: 0.5))
+        ..addTapListener(_placemarkTapListener);
+    }
+
+    if (_userLocation != null) {
+      _mapWindow?.map.mapObjects.addPlacemark()
+        ?..geometry = mapkt.Point(
+            latitude: _userLocation!.latitude,
+            longitude: _userLocation!.longitude)
+        ..setIcon(
+          userImageProvider,
+        )
+        ..setIconStyle(const mapkt.IconStyle(scale: 0.2));
+
+      _mapWindow?.map.move(mapkt.CameraPosition(_userLocation!,
+          zoom: 15.0, azimuth: 150.0, tilt: 30.0));
+    }
   }
 }
 

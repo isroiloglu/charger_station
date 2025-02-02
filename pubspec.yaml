@@ -35,8 +35,9 @@ dependencies:
 #  yandex_mapkit: ^3.2.0
   geolocator: ^13.0.2
   lottie: ^3.0.0
-  yandex_maps_mapkit_lite:
-    version: ^4.10.1-beta
+  yandex_maps_mapkit: 4.10.1-beta
+#  yandex_maps_mapkit_lite:
+#    version: ^4.10.1-beta
 
 
   # The following adds the Cupertino Icons font to your application.

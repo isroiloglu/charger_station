@@ -365,11 +365,11 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
-  yandex_maps_mapkit_lite:
+  yandex_maps_mapkit:
     dependency: "direct main"
     description:
-      name: yandex_maps_mapkit_lite
-      sha256: "1921c59f4270ccb26941e5b9af4395775d069a6e4a39d7a9783cefeb2230aa60"
+      name: yandex_maps_mapkit
+      sha256: "8d52f2d20cadefeba3c1fc8812d82beb71f9cd690d1bec1ba1742feb5fe079ce"
       url: "https://pub.dev"
     source: hosted
     version: "4.10.1-beta"

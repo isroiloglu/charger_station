@@ -1,7 +1,7 @@
 import 'package:charge_me/core/const/colors.dart';
 import 'package:charge_me/ui/pages/main_page.dart';
 import 'package:flutter/material.dart';
-import 'package:yandex_maps_mapkit_lite/init.dart' as init;
+import 'package:yandex_maps_mapkit/init.dart' as init;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
